@@ -44,19 +44,32 @@
       margin-bottom: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.04);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 12px;
     }
     .spinner {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       border: 3px solid #E2E8F0;
       border-top-color: var(--primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    .upload-btn {
+      display: inline-block;
+      background-color: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
 
     .filters-panel {
       background: var(--card-bg);
@@ -156,6 +169,12 @@
     <div class="status-card" id="statusCard">
       <div class="spinner" id="statusSpinner"></div>
       <span id="statusText">Chargement automatique de la collection...</span>
+      <div id="fallbackUpload" style="display: none; margin-top: 8px;">
+        <label class="upload-btn">
+          Sélectionner le fichier collection.xlsx manuellement
+          <input type="file" id="excelFile" accept=".xlsx, .xls" style="display: none;">
+        </label>
+      </div>
     </div>
 
     <div class="filters-panel">
@@ -224,16 +243,31 @@
     let rawGamesData = [];
 
     document.addEventListener('DOMContentLoaded', () => {
+      attachFilterListeners();
       loadCollectionFromUrl();
+
+      document.getElementById('excelFile').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const data = new Uint8Array(evt.target.result);
+          parseAndInitExcel(data);
+        };
+        reader.readAsArrayBuffer(file);
+      });
     });
 
     async function loadCollectionFromUrl() {
       const statusCard = document.getElementById('statusCard');
       const statusSpinner = document.getElementById('statusSpinner');
       const statusText = document.getElementById('statusText');
+      const fallbackUpload = document.getElementById('fallbackUpload');
 
       statusCard.style.display = 'flex';
       statusSpinner.style.display = 'block';
+      fallbackUpload.style.display = 'none';
       statusText.textContent = 'Téléchargement de la collection depuis le serveur...';
 
       try {
@@ -242,23 +276,22 @@
         
         const arrayBuffer = await response.arrayBuffer();
         const data = new Uint8Array(arrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        rawGamesData = XLSX.utils.sheet_to_json(worksheet);
-        
-        statusCard.style.display = 'none';
-        initApp(rawGamesData);
+        parseAndInitExcel(data);
       } catch (error) {
         console.error('Erreur lors du chargement automatique:', error);
         statusSpinner.style.display = 'none';
-        statusText.innerHTML = `<span style="color: #DC2626;">Impossible de charger automatiquement <code>collection.xlsx</code> (${error.message}).</span>`;
+        statusText.innerHTML = `<span style="color: #DC2626;">Impossible de récupérer automatiquement <code>collection.xlsx</code> (restriction navigateur local/CORS).</span>`;
+        fallbackUpload.style.display = 'block';
       }
     }
 
-    function initApp(data) {
-      attachFilterListeners();
+    function parseAndInitExcel(dataArray) {
+      const workbook = XLSX.read(dataArray, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      rawGamesData = XLSX.utils.sheet_to_json(worksheet);
+      document.getElementById('statusCard').style.display = 'none';
       applyFilters();
     }
 
@@ -267,7 +300,8 @@
       return String(str)
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase();
+        .toLowerCase()
+        .trim();
     }
 
     function normalizeAge(str) {
@@ -316,8 +350,9 @@
     }
 
     function getActiveFilterValues(excludeId = null) {
+      const titreRaw = document.getElementById('searchTitre').value.trim();
       return {
-        titre: removeAccents(document.getElementById('searchTitre').value),
+        titre: titreRaw ? removeAccents(titreRaw) : '',
         joueurs: excludeId === 'filterJoueurs' ? null : (document.getElementById('filterJoueurs').value !== "" ? parseInt(document.getElementById('filterJoueurs').value, 10) : null),
         age: excludeId === 'filterAge' ? '' : document.getElementById('filterAge').value,
         duree: excludeId === 'filterDuree' ? '' : document.getElementById('filterDuree').value,
