@@ -290,8 +290,10 @@
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       
-      rawGamesData = XLSX.utils.sheet_to_json(worksheet);
+      // Parsing du fichier Excel vers rawGamesData
+      rawGamesData = XLSX.utils.sheet_to_json(sheet);
       document.getElementById('statusCard').style.display = 'none';
+      // Exécution immédiate du premier filtrage et de l'affichage initial
       applyFilters();
     }
 
@@ -348,20 +350,23 @@
 
       return true;
     }
-
-    function getActiveFilterValues(excludeId = null) {
-      const titreRaw = document.getElementById('searchTitre').value.trim();
+   
+    function getActiveFilterValues() {
+      const searchInput = document.getElementById('searchTitre');
+      const rawTitre = searchInput ? searchInput.value : '';
+      
       return {
-        titre: titreRaw ? removeAccents(titreRaw) : '',
-        joueurs: excludeId === 'filterJoueurs' ? null : (document.getElementById('filterJoueurs').value !== "" ? parseInt(document.getElementById('filterJoueurs').value, 10) : null),
-        age: excludeId === 'filterAge' ? '' : document.getElementById('filterAge').value,
-        duree: excludeId === 'filterDuree' ? '' : document.getElementById('filterDuree').value,
-        theme: excludeId === 'filterTheme' ? '' : removeAccents(document.getElementById('filterTheme').value),
-        meca: excludeId === 'filterMecanisme' ? '' : removeAccents(document.getElementById('filterMecanisme').value),
-        auteur: removeAccents(document.getElementById('filterAuteur').value)
+        // Trim élimine les espaces superflus pour traiter une chaîne vide correctement
+        titre: removeAccents(rawTitre.trim().toLowerCase()),
+        joueurs: document.getElementById('filterJoueurs').value ? parseInt(document.getElementById('filterJoueurs').value, 10) : null,
+        age: document.getElementById('filterAge').value || null,
+        duree: document.getElementById('filterDuree').value || null,
+        theme: removeAccents(document.getElementById('filterTheme').value.toLowerCase()),
+        meca: removeAccents(document.getElementById('filterMeca').value.toLowerCase()),
+        auteur: removeAccents(document.getElementById('filterAuteur').value.toLowerCase())
       };
     }
-
+    
     function gameMatchesFilters(g, filters) {
       if (!g) return false;
       
@@ -497,15 +502,22 @@
 
     function applyFilters() {
       const filters = getActiveFilterValues();
-      const filtered = rawGamesData.filter(g => gameMatchesFilters(g, filters));
-
-      filtered.sort((a, b) => String(a['Titre'] || '').localeCompare(String(b['Titre'] || ''), 'fr', { numeric: true }));
-
-      updateTitleDatalist(filtered);
-      updateDropdownCounts();
+    
+      // Filtrage des jeux selon les critères sélectionnés
+      let filtered = rawGamesData.filter(g => gameMatchesFilters(g, filters));
+    
+      // Tri par ordre alphabétique du Titre (de A à Z)
+      filtered.sort((a, b) => {
+        const titleA = (a['Titre'] || '').toString().toLowerCase();
+        const titleB = (b['Titre'] || '').toString().toLowerCase();
+        return titleA.localeCompare(titleB, 'fr', { sensitivity: 'base' });
+      });
+    
+      // Mise à jour des sélecteurs dynamiques et affichage de la liste
+      updateDropdownCounts(filtered);
       renderGames(filtered);
     }
-
+    
     function resetFilters() {
       ['searchTitre', 'filterAuteur'].forEach(id => document.getElementById(id).value = '');
       ['filterJoueurs', 'filterAge', 'filterDuree', 'filterTheme', 'filterMecanisme'].forEach(id => document.getElementById(id).value = '');
