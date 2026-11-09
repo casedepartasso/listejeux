@@ -262,7 +262,6 @@
       
       const parsedData = XLSX.utils.sheet_to_json(worksheet);
 
-      // Déduplication automatique des entrées basée sur l'ID ou Titre+Édition
       const seen = new Set();
       rawGamesData = parsedData.filter(item => {
         if (!item || !item['Titre']) return false;
@@ -492,7 +491,6 @@
       
       let filtered;
       if (!hasActiveFilters) {
-        // Si aucun filtre n'est actif, on prend TOUS les jeux directement
         filtered = [...rawGamesData];
       } else {
         filtered = rawGamesData.filter(g => gameMatchesFilters(g, filters));
