@@ -285,7 +285,7 @@
       }
     }
 
-    function parseAndInitExcel(dataArray) {
+    function parseAndInitExcel(data) {
       const workbook = XLSX.read(dataArray, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
