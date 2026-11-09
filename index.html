@@ -367,8 +367,8 @@
       
       const matchTitre = !filters.titre || (g['Titre'] && removeAccents(g['Titre']).includes(filters.titre));
       const matchJoueurs = filters.joueurs === null || isPlayerCountValid(g['Joueur(s)'], filters.joueurs);
-      const matchAge = !filters.age || normalizeAge(g['Age(s)']) === filters.age;
-      const matchDuree = !filters.duree || normalizeDuree(g['Durée']) === filters.duree;
+      const matchAge = !filters.age || (g['Age(s)'] && normalizeAge(g['Age(s)']) === filters.age);
+      const matchDuree = !filters.duree || (g['Durée'] && normalizeDuree(g['Durée']) === filters.duree);
       const matchTheme = !filters.theme || (g['Thème(s)'] && removeAccents(g['Thème(s)']).includes(filters.theme));
       const matchMeca = !filters.meca || (g['Mécanisme(s)'] && removeAccents(g['Mécanisme(s)']).includes(filters.meca));
       const matchAuteur = !filters.auteur || (g['Auteur(s)'] && removeAccents(g['Auteur(s)']).includes(filters.auteur));
