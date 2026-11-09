@@ -285,18 +285,23 @@
       }
     }
 
-    function parseAndInitExcel(data) {
+    function parseAndInitExcel(dataArray) {
+      // 1. Ces 3 lignes sont OBLIGATOIRES pour lire le fichier Excel :
       const workbook = XLSX.read(dataArray, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       
-      // Parsing du fichier Excel vers rawGamesData
-      rawGamesData = XLSX.utils.sheet_to_json(sheet);
-      document.getElementById('statusCard').style.display = 'none';
-      // Exécution immédiate du premier filtrage et de l'affichage initial
+      // 2. Conversion de la feuille Excel en tableau d'objets JavaScript :
+      rawGamesData = XLSX.utils.sheet_to_json(worksheet);
+    
+      // 3. Masquer la carte de statut de chargement :
+      const statusCard = document.getElementById('statusCard');
+      if (statusCard) statusCard.style.display = 'none';
+    
+      // 4. Appliquer les filtres et afficher TOUTE la collection triée de A à Z :
       applyFilters();
-    }
-
+    }    
+    
     function removeAccents(str) {
       if (!str) return '';
       return String(str)
