@@ -314,26 +314,32 @@
       if (!isNaN(exactVal)) return target === exactVal;
       return true;
     }
-   
+
     function getActiveFilterValues() {
       const searchInput = document.getElementById('searchTitre');
       const rawTitre = searchInput ? searchInput.value : '';
       const mecaSelect = document.getElementById('filterMecanisme');
-      
+      const joueursSelect = document.getElementById('filterJoueurs');
+      const ageSelect = document.getElementById('filterAge');
+      const dureeSelect = document.getElementById('filterDuree');
+      const themeSelect = document.getElementById('filterTheme');
+      const auteurInput = document.getElementById('filterAuteur');
+    
       return {
-        titre: removeAccents(rawTitre.trim().toLowerCase()),
-        joueurs: document.getElementById('filterJoueurs').value ? parseInt(document.getElementById('filterJoueurs').value, 10) : null,
-        age: document.getElementById('filterAge').value || null,
-        duree: document.getElementById('filterDuree').value || null,
-        theme: removeAccents(document.getElementById('filterTheme').value.toLowerCase()),
-        meca: mecaSelect ? removeAccents(mecaSelect.value.toLowerCase()) : '',
-        auteur: removeAccents(document.getElementById('filterAuteur').value.toLowerCase())
+        titre: removeAccents(rawTitre),
+        joueurs: (joueursSelect && joueursSelect.value) ? parseInt(joueursSelect.value, 10) : null,
+        age: (ageSelect && ageSelect.value) ? ageSelect.value : null,
+        duree: (dureeSelect && dureeSelect.value) ? dureeSelect.value : null,
+        theme: (themeSelect && themeSelect.value) ? removeAccents(themeSelect.value) : '',
+        meca: (mecaSelect && mecaSelect.value) ? removeAccents(mecaSelect.value) : '',
+        auteur: (auteurInput && auteurInput.value) ? removeAccents(auteurInput.value) : ''
       };
     }
-    
+
     function gameMatchesFilters(g, filters) {
       if (!g) return false;
       
+      // Si le champ filtre est vide (""), matchTitre est systématiquement true
       const matchTitre = !filters.titre || (g['Titre'] && removeAccents(g['Titre']).includes(filters.titre));
       const matchJoueurs = filters.joueurs === null || isPlayerCountValid(g['Joueur(s)'], filters.joueurs);
       const matchAge = !filters.age || (g['Age(s)'] && normalizeAge(g['Age(s)']) === filters.age);
@@ -344,7 +350,7 @@
       
       return matchTitre && matchJoueurs && matchAge && matchDuree && matchTheme && matchMeca && matchAuteur;
     }
-
+       
     function updateTitleDatalist(filteredGames) {
       const datalist = document.getElementById('titresSuggestions');
       datalist.innerHTML = '';
@@ -360,8 +366,12 @@
 
     function updateDropdownCounts() {
       const joueursSelect = document.getElementById('filterJoueurs');
+      if (!joueursSelect) return;
       const currentJoueurVal = joueursSelect.value;
+      
       const filtersExJoueurs = getActiveFilterValues();
+      filtersExJoueurs.joueurs = null; // Ne pas auto-filtrer les joueurs sur eux-mêmes
+      
       const filteredForJoueurs = rawGamesData.filter(g => gameMatchesFilters(g, filtersExJoueurs));
       const joueurOptionsData = [];
       
@@ -372,14 +382,7 @@
         const labelBase = opt.value === "1" ? "1 joueur (Solo)" : (opt.value === "10" ? "10 joueurs et +" : `${opt.value} joueurs`);
         joueurOptionsData.push({ value: opt.value, label: labelBase, count: count });
       });
-
-      joueurOptionsData.sort((a, b) => {
-        if ((a.count > 0 && b.count > 0) || (a.count === 0 && b.count === 0)) {
-          return parseInt(a.value, 10) - parseInt(b.value, 10);
-        }
-        return b.count - a.count;
-      });
-
+    
       joueursSelect.innerHTML = `<option value="">Tous les nombres (${filteredForJoueurs.length})</option>`;
       joueurOptionsData.forEach(item => {
         const opt = document.createElement('option');
@@ -392,13 +395,13 @@
         joueursSelect.appendChild(opt);
       });
       joueursSelect.value = currentJoueurVal;
-
+    
       updateDynamicSelect('filterAge', 'Age(s)', false, 'Tous les âges', normalizeAge);
       updateDynamicSelect('filterDuree', 'Durée', false, 'Toutes les durées', normalizeDuree);
       updateDynamicSelect('filterTheme', 'Thème(s)', true, 'Tous les thèmes');
       updateDynamicSelect('filterMecanisme', 'Mécanisme(s)', true, 'Tous les mécanismes');
     }
-
+    
     function updateDynamicSelect(selectId, fieldName, isMultiValue, defaultText, transformFn = null) {
       const select = document.getElementById(selectId);
       if (!select) return;
