@@ -211,6 +211,7 @@
     </div>
     <div class="games-grid" id="gamesGrid"></div>
   </div>
+
   <script>
     const EXCEL_URL = 'https://raw.githubusercontent.com/casedepartasso/listejeux/doc/collection.xlsx';
     let rawGamesData = [];
@@ -249,7 +250,7 @@
       } catch (error) {
         console.error('Erreur lors du chargement automatique:', error);
         statusSpinner.style.display = 'none';
-        statusText.innerHTML = `<span style="color: #DC2626;">Impossible de récupérer automatiquement <code>collection.xlsx</code> (restriction navigateur local/CORS).</span>`;
+        statusText.innerHTML = `<span style="color: #DC2626;">Impossible de récupérer automatiquement <code>collection.xlsx</code>.</span>`;
         fallbackUpload.style.display = 'block';
       }
     }
@@ -259,11 +260,21 @@
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       
-      rawGamesData = XLSX.utils.sheet_to_json(worksheet);
-    
+      const parsedData = XLSX.utils.sheet_to_json(worksheet);
+
+      // Déduplication automatique des entrées basée sur l'ID ou Titre+Édition
+      const seen = new Set();
+      rawGamesData = parsedData.filter(item => {
+        if (!item || !item['Titre']) return false;
+        const key = item['ID'] ? String(item['ID']) : `${item['Titre']}_${item['Édition'] || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       const statusCard = document.getElementById('statusCard');
       if (statusCard) statusCard.style.display = 'none';
-    
+
       applyFilters();
     }    
     
@@ -324,7 +335,7 @@
       const dureeSelect = document.getElementById('filterDuree');
       const themeSelect = document.getElementById('filterTheme');
       const auteurInput = document.getElementById('filterAuteur');
-    
+
       return {
         titre: removeAccents(rawTitre),
         joueurs: (joueursSelect && joueursSelect.value) ? parseInt(joueursSelect.value, 10) : null,
@@ -339,7 +350,6 @@
     function gameMatchesFilters(g, filters) {
       if (!g) return false;
       
-      // Si le champ filtre est vide (""), matchTitre est systématiquement true
       const matchTitre = !filters.titre || (g['Titre'] && removeAccents(g['Titre']).includes(filters.titre));
       const matchJoueurs = filters.joueurs === null || isPlayerCountValid(g['Joueur(s)'], filters.joueurs);
       const matchAge = !filters.age || (g['Age(s)'] && normalizeAge(g['Age(s)']) === filters.age);
@@ -350,9 +360,10 @@
       
       return matchTitre && matchJoueurs && matchAge && matchDuree && matchTheme && matchMeca && matchAuteur;
     }
-       
+
     function updateTitleDatalist(filteredGames) {
       const datalist = document.getElementById('titresSuggestions');
+      if (!datalist) return;
       datalist.innerHTML = '';
       
       const titles = Array.from(new Set(filteredGames.map(g => g['Titre']).filter(Boolean)));
@@ -368,10 +379,9 @@
       const joueursSelect = document.getElementById('filterJoueurs');
       if (!joueursSelect) return;
       const currentJoueurVal = joueursSelect.value;
-      
       const filtersExJoueurs = getActiveFilterValues();
-      filtersExJoueurs.joueurs = null; // Ne pas auto-filtrer les joueurs sur eux-mêmes
-      
+      filtersExJoueurs.joueurs = null;
+
       const filteredForJoueurs = rawGamesData.filter(g => gameMatchesFilters(g, filtersExJoueurs));
       const joueurOptionsData = [];
       
@@ -382,7 +392,14 @@
         const labelBase = opt.value === "1" ? "1 joueur (Solo)" : (opt.value === "10" ? "10 joueurs et +" : `${opt.value} joueurs`);
         joueurOptionsData.push({ value: opt.value, label: labelBase, count: count });
       });
-    
+
+      joueurOptionsData.sort((a, b) => {
+        if ((a.count > 0 && b.count > 0) || (a.count === 0 && b.count === 0)) {
+          return parseInt(a.value, 10) - parseInt(b.value, 10);
+        }
+        return b.count - a.count;
+      });
+
       joueursSelect.innerHTML = `<option value="">Tous les nombres (${filteredForJoueurs.length})</option>`;
       joueurOptionsData.forEach(item => {
         const opt = document.createElement('option');
@@ -395,13 +412,13 @@
         joueursSelect.appendChild(opt);
       });
       joueursSelect.value = currentJoueurVal;
-    
+
       updateDynamicSelect('filterAge', 'Age(s)', false, 'Tous les âges', normalizeAge);
       updateDynamicSelect('filterDuree', 'Durée', false, 'Toutes les durées', normalizeDuree);
       updateDynamicSelect('filterTheme', 'Thème(s)', true, 'Tous les thèmes');
       updateDynamicSelect('filterMecanisme', 'Mécanisme(s)', true, 'Tous les mécanismes');
     }
-    
+
     function updateDynamicSelect(selectId, fieldName, isMultiValue, defaultText, transformFn = null) {
       const select = document.getElementById(selectId);
       if (!select) return;
@@ -471,8 +488,15 @@
 
     function applyFilters() {
       const filters = getActiveFilterValues();
-    
-      let filtered = rawGamesData.filter(g => gameMatchesFilters(g, filters));
+      const hasActiveFilters = Object.values(filters).some(val => val !== '' && val !== null);
+      
+      let filtered;
+      if (!hasActiveFilters) {
+        // Si aucun filtre n'est actif, on prend TOUS les jeux directement
+        filtered = [...rawGamesData];
+      } else {
+        filtered = rawGamesData.filter(g => gameMatchesFilters(g, filters));
+      }
     
       filtered.sort((a, b) => {
         const titreA = String(a['Titre'] || '');
