@@ -206,14 +206,15 @@
       <button class="reset-btn" onclick="resetFilters()">Réinitialiser tous les filtres</button>
     </div>
     <div class="stats-bar">
-      <span id="statsBar">Connexion au serveur...</span>
+      <span id="statsBar">Chargement de la collection...</span>
       <button style="background: none; border: none; color: var(--primary); font-size: 0.8rem; cursor: pointer; text-decoration: underline;" onclick="loadCollectionFromUrl()">Recharger la collection</button>
     </div>
     <div class="games-grid" id="gamesGrid"></div>
   </div>
 
   <script>
-    const EXCEL_URL = 'https://raw.githubusercontent.com/casedepartasso/listejeux/doc/collection.xlsx';
+    // URL directe valide vers le fichier Excel sur GitHub Pages / Dépôt
+    const EXCEL_URL = 'https://casedepartasso.github.io/listejeux/collection.xlsx';
     let rawGamesData = [];
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -236,45 +237,52 @@
       const statusSpinner = document.getElementById('statusSpinner');
       const statusText = document.getElementById('statusText');
       const fallbackUpload = document.getElementById('fallbackUpload');
+      
       statusCard.style.display = 'flex';
       statusSpinner.style.display = 'block';
       fallbackUpload.style.display = 'none';
-      statusText.textContent = 'Téléchargement de la collection depuis le serveur...';
+      statusText.textContent = 'Chargement de la collection...';
+
       try {
-        const response = await fetch(EXCEL_URL);
-        if (!response.ok) throw new Error(`Erreur réseau (${response.status})`);
+        const response = await fetch(EXCEL_URL + '?v=' + Date.now());
+        if (!response.ok) throw new Error(`Fichier distant introuvable (${response.status})`);
         
         const arrayBuffer = await response.arrayBuffer();
         const data = new Uint8Array(arrayBuffer);
         parseAndInitExcel(data);
       } catch (error) {
-        console.error('Erreur lors du chargement automatique:', error);
+        console.warn('Tentative de chargement distant échouée. Bascule sur la recherche locale/manuelle.', error);
         statusSpinner.style.display = 'none';
-        statusText.innerHTML = `<span style="color: #DC2626;">Impossible de récupérer automatiquement <code>collection.xlsx</code>.</span>`;
+        statusText.innerHTML = `<span style="color: #64748B;">Sélectionnez le fichier <code>collection.xlsx</code> pour charger votre ludothèque :</span>`;
         fallbackUpload.style.display = 'block';
       }
     }
 
     function parseAndInitExcel(dataArray) {
-      const workbook = XLSX.read(dataArray, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      
-      const parsedData = XLSX.utils.sheet_to_json(worksheet);
+      try {
+        const workbook = XLSX.read(dataArray, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        const parsedData = XLSX.utils.sheet_to_json(worksheet);
 
-      const seen = new Set();
-      rawGamesData = parsedData.filter(item => {
-        if (!item || !item['Titre']) return false;
-        const key = item['ID'] ? String(item['ID']) : `${item['Titre']}_${item['Édition'] || ''}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+        const seen = new Set();
+        rawGamesData = parsedData.filter(item => {
+          if (!item || !item['Titre']) return false;
+          const key = item['ID'] ? String(item['ID']) : `${item['Titre']}_${item['Édition'] || ''}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
-      const statusCard = document.getElementById('statusCard');
-      if (statusCard) statusCard.style.display = 'none';
+        const statusCard = document.getElementById('statusCard');
+        if (statusCard) statusCard.style.display = 'none';
 
-      applyFilters();
+        // Affichage immédiat de tous les jeux dès le traitement
+        applyFilters();
+      } catch (err) {
+        console.error('Erreur lors du traitement du fichier Excel:', err);
+      }
     }    
     
     function removeAccents(str) {
