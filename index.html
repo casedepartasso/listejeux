@@ -363,6 +363,8 @@
     }
 
     function gameMatchesFilters(g, filters) {
+      if (!g) return false;
+      
       const matchTitre = !filters.titre || (g['Titre'] && removeAccents(g['Titre']).includes(filters.titre));
       const matchJoueurs = filters.joueurs === null || isPlayerCountValid(g['Joueur(s)'], filters.joueurs);
       const matchAge = !filters.age || normalizeAge(g['Age(s)']) === filters.age;
