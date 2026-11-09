@@ -513,12 +513,13 @@
     
       // Tri par ordre alphabétique du Titre (de A à Z)
       filtered.sort((a, b) => {
-        const titleA = (a['Titre'] || '').toString().toLowerCase();
-        const titleB = (b['Titre'] || '').toString().toLowerCase();
-        return titleA.localeCompare(titleB, 'fr', { sensitivity: 'base' });
+        const titreA = String(a['Titre'] || '');
+        const titreB = String(b['Titre'] || '');
+        return titreA.localeCompare(titreB, 'fr', { numeric: true, sensitivity: 'base' });
       });
     
       // Mise à jour des sélecteurs dynamiques et affichage de la liste
+      updateTitleDatalist(filtered);
       updateDropdownCounts(filtered);
       renderGames(filtered);
     }
