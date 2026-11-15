@@ -313,14 +313,25 @@
         return false;
       };
     
-      // Règles de correspondance Solo / 1 joueur et Duo / 2 joueurs
-      if (filter === 'solo' || filter === '1') {
-        return str === 'solo' || checkNumeric(1);
-      }
-    
-      if (filter === 'duo' || filter === '2') {
-        return str === 'duo' || checkNumeric(2);
-      }
+	 // Filtre "Solo" : uniquement la valeur exacte "solo"
+	if (filter === 'solo') {
+	  return str === 'solo';
+	}
+
+	// Filtre "1 joueur" : numérique (inclus les intervalles/valeurs comprenant 1)
+	if (filter === '1') {
+	  return str === 'solo' || checkNumeric(1);
+	}
+
+	// Filtre "Duo" : uniquement la valeur exacte "duo"
+	if (filter === 'duo') {
+	  return str === 'duo';
+	}
+
+	// Filtre "2 joueurs" : numérique (inclus les intervalles/valeurs comprenant 2)
+	if (filter === '2') {
+	  return str === 'duo' || checkNumeric(2);
+	}     
     
       const targetNum = parseInt(filter, 10);
       if (isNaN(targetNum)) return true;
