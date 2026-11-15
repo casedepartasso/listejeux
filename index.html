@@ -178,7 +178,9 @@
           <label>Nb de joueur(s)</label>
           <select id="filterJoueurs">
             <option value="">Tous les nombres</option>
-            <option value="1">1 joueur</option>
+            <option value="solo">Solo</option>
+			<option value="1">1 joueur</option>
+			<option value="duo">Duo</option>
             <option value="2">2 joueurs</option>
             <option value="3">3 joueurs</option>
             <option value="4">4 joueurs</option>
@@ -281,44 +283,85 @@
 	applyFilters();
   }
 
-  function isPlayerCountValid(playerStr, targetCount) {
-	if (!playerStr || targetCount === null || targetCount === undefined) return true;
-
-	const str = String(playerStr).trim();
-	const target = parseInt(targetCount, 10);
-	if (isNaN(target)) return true;
-
-	if (str.toLowerCase() === 'duo') return target === 2;
-
-	if (str.includes('—') || str.includes('-')) {
-	  const parts = str.split(/—|-/).map(p => parseInt(p.trim(), 10));
-	  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-		return target >= parts[0] && target <= parts[1];
-	  }
-	}
-
-	if (str.includes('+')) {
-	  const minVal = parseInt(str.replace('+', '').trim(), 10);
-	  if (!isNaN(minVal)) return target >= minVal;
-	}
-
-	const exactVal = parseInt(str, 10);
-	if (!isNaN(exactVal)) return target === exactVal;
-
-	return true;
-  }
-
-  function getActiveFilterValues(excludeId = null) {
-	return {
-	  titre: document.getElementById('searchTitre').value.toLowerCase(),
-	  joueurs: excludeId === 'filterJoueurs' ? null : (document.getElementById('filterJoueurs').value !== "" ? parseInt(document.getElementById('filterJoueurs').value, 10) : null),
-	  age: excludeId === 'filterAge' ? '' : document.getElementById('filterAge').value,
-	  duree: excludeId === 'filterDuree' ? '' : document.getElementById('filterDuree').value,
-	  theme: excludeId === 'filterTheme' ? '' : document.getElementById('filterTheme').value.toLowerCase(),
-	  meca: excludeId === 'filterMecanisme' ? '' : document.getElementById('filterMecanisme').value.toLowerCase(),
-	  auteur: document.getElementById('filterAuteur').value.toLowerCase()
-	};
-  }
+    function isPlayerCountValid(playerStr, targetFilter) {
+    
+      if (!playerStr || targetFilter === null || targetFilter === undefined || targetFilter === "") return true;
+    
+      const str = String(playerStr).trim().toLowerCase();
+      const filter = String(targetFilter).trim().toLowerCase();
+    
+      // Test du nombre de joueurs numérique pour l'intervalle / valeur exacte du jeu
+      const checkNumeric = (target) => {
+        if (str === 'duo') return target === 2;
+        if (str === 'solo') return target === 1;
+    
+        if (str.includes('—') || str.includes('-')) {
+          const parts = str.split(/—|-/).map(p => parseInt(p.trim(), 10));
+          if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            return target >= parts[0] && target <= parts[1];
+          }
+        }
+    
+        if (str.includes('+')) {
+          const minVal = parseInt(str.replace('+', '').trim(), 10);
+          if (!isNaN(minVal)) return target >= minVal;
+        }
+    
+        const exactVal = parseInt(str, 10);
+        if (!isNaN(exactVal)) return target === exactVal;
+    
+        return false;
+      };
+    
+      // Règles de correspondance Solo / 1 joueur et Duo / 2 joueurs
+      if (filter === 'solo' || filter === '1') {
+        return str === 'solo' || checkNumeric(1);
+      }
+    
+      if (filter === 'duo' || filter === '2') {
+        return str === 'duo' || checkNumeric(2);
+      }
+    
+      const targetNum = parseInt(filter, 10);
+      if (isNaN(targetNum)) return true;
+    
+      return checkNumeric(targetNum);
+    }
+	
+    function isPlayerCountValidInternal(str, target) {
+      if (str === 'duo') return target === 2;
+      if (str === 'solo') return target === 1;
+    
+      if (str.includes('—') || str.includes('-')) {
+        const parts = str.split(/—|-/).map(p => parseInt(p.trim(), 10));
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+          return target >= parts[0] && target <= parts[1];
+        }
+      }
+    
+      if (str.includes('+')) {
+        const minVal = parseInt(str.replace('+', '').trim(), 10);
+        if (!isNaN(minVal)) return target >= minVal;
+      }
+    
+      const exactVal = parseInt(str, 10);
+      if (!isNaN(exactVal)) return target === exactVal;
+    
+      return true;
+    }	  
+	  
+    function getActiveFilterValues(excludeId = null) {
+      const filterJoueursVal = document.getElementById('filterJoueurs').value;
+      return {
+        titre: document.getElementById('searchTitre').value.toLowerCase(),
+        joueurs: excludeId === 'filterJoueurs' ? null : (filterJoueursVal !== "" ? filterJoueursVal : null),
+        age: excludeId === 'filterAge' ? '' : document.getElementById('filterAge').value,
+        duree: excludeId === 'filterDuree' ? '' : document.getElementById('filterDuree').value,
+        theme: excludeId === 'filterTheme' ? '' : document.getElementById('filterTheme').value.toLowerCase(),
+        meca: excludeId === 'filterMecanisme' ? '' : document.getElementById('filterMecanisme').value.toLowerCase(),
+        auteur: document.getElementById('filterAuteur').value.toLowerCase()
+      };
+    }
 
   function gameMatchesFilters(g, filters) {
 	const matchTitre = !filters.titre || (g['Titre'] && String(g['Titre']).toLowerCase().includes(filters.titre));
@@ -332,48 +375,50 @@
 	return matchTitre && matchJoueurs && matchAge && matchDuree && matchTheme && matchMeca && matchAuteur;
   }
 
-  function updateDropdownCounts() {
-    const joueursSelect = document.getElementById('filterJoueurs');
-    const currentJoueurVal = joueursSelect.value;
-    const filtersExJoueurs = getActiveFilterValues('filterJoueurs');
-    const filteredForJoueurs = rawGamesData.filter(g => gameMatchesFilters(g, filtersExJoueurs));
-
-    const joueurOptionsData = [];
-    Array.from(joueursSelect.options).forEach(opt => {
-      if (opt.value === "") return;
-      const val = parseInt(opt.value, 10);
-      const count = filteredForJoueurs.filter(g => isPlayerCountValid(g['Joueur(s)'], val)).length;
-      const labelBase = opt.value === "1" ? "1 joueur" : (opt.value === "10" ? "10 joueurs et +" : `${opt.value} joueurs`);
-      joueurOptionsData.push({ value: opt.value, label: labelBase, count: count });
-    });
-
-    joueurOptionsData.sort((a, b) => {
-      if ((a.count > 0 && b.count > 0) || (a.count === 0 && b.count === 0)) {
-        return parseInt(a.value, 10) - parseInt(b.value, 10);
-      }
-      return b.count - a.count;
-    });
-
-    joueursSelect.innerHTML = `<option value="">Tous les nombres (${filteredForJoueurs.length})</option>`;
-    joueurOptionsData.forEach(item => {
-      const opt = document.createElement('option');
-      opt.value = item.value;
-      opt.textContent = `${item.label} (${item.count})`;
-      if (item.count === 0) {
-        opt.disabled = true;
-        opt.style.color = '#94A3B8';
-      }
-      joueursSelect.appendChild(opt);
-    });
-    joueursSelect.value = currentJoueurVal;
-
-    // Utilisation de normalizeAge pour le filtre d'âge
-    updateDynamicSelect('filterAge', 'Age(s)', false, 'Tous les âges', normalizeAge);
-    updateDynamicSelect('filterDuree', 'Durée', false, 'Toutes les durées', normalizeDuree);
-    updateDynamicSelect('filterTheme', 'Thème(s)', true, 'Tous les thèmes');
-    updateDynamicSelect('filterMecanisme', 'Mécanisme(s)', true, 'Tous les mécanismes');
-  }
-  
+    function updateDropdownCounts() {
+      const joueursSelect = document.getElementById('filterJoueurs');
+      const currentJoueurVal = joueursSelect.value;
+      const filtersExJoueurs = getActiveFilterValues('filterJoueurs');
+      const filteredForJoueurs = rawGamesData.filter(g => gameMatchesFilters(g, filtersExJoueurs));
+    
+      const optionsConfig = [
+        { value: "solo", label: "Solo" },
+        { value: "1", label: "1 joueur" },
+        { value: "duo", label: "Duo" },
+        { value: "2", label: "2 joueurs" },
+        { value: "3", label: "3 joueurs" },
+        { value: "4", label: "4 joueurs" },
+        { value: "5", label: "5 joueurs" },
+        { value: "6", label: "6 joueurs" },
+        { value: "7", label: "7 joueurs" },
+        { value: "8", label: "8 joueurs" },
+        { value: "9", label: "9 joueurs" },
+        { value: "10", label: "10 joueurs et +" }
+      ];
+    
+      joueursSelect.innerHTML = `<option value="">Tous les nombres (${filteredForJoueurs.length})</option>`;
+    
+      optionsConfig.forEach(optData => {
+        const count = filteredForJoueurs.filter(g => isPlayerCountValid(g['Joueur(s)'], optData.value)).length;
+        const opt = document.createElement('option');
+        opt.value = optData.value;
+        opt.textContent = `${optData.label} (${count})`;
+        if (count === 0) {
+          opt.disabled = true;
+          opt.style.color = '#94A3B8';
+        }
+        joueursSelect.appendChild(opt);
+      });
+    
+      joueursSelect.value = currentJoueurVal;
+    
+      updateDynamicSelect('filterAge', 'Age(s)', false, 'Tous les âges', normalizeAge);
+      updateDynamicSelect('filterDuree', 'Durée', false, 'Toutes les durées', normalizeDuree);
+      updateDynamicSelect('filterTheme', 'Thème(s)', true, 'Tous les thèmes');
+      updateDynamicSelect('filterMecanisme', 'Mécanisme(s)', true, 'Tous les mécanismes');
+    }
+      
+    
   	function updateDynamicSelect(selectId, fieldName, isMultiValue, defaultText, transformFn = null) {
 	  const select = document.getElementById(selectId);
 	  const currentVal = select.value;
