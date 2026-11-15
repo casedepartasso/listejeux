@@ -178,7 +178,7 @@
           <label>Nb de joueur(s)</label>
           <select id="filterJoueurs">
             <option value="">Tous les nombres</option>
-            <option value="1">1 joueur (Solo)</option>
+            <option value="1">1 joueur</option>
             <option value="2">2 joueurs</option>
             <option value="3">3 joueurs</option>
             <option value="4">4 joueurs</option>
@@ -343,7 +343,7 @@
       if (opt.value === "") return;
       const val = parseInt(opt.value, 10);
       const count = filteredForJoueurs.filter(g => isPlayerCountValid(g['Joueur(s)'], val)).length;
-      const labelBase = opt.value === "1" ? "1 joueur (Solo)" : (opt.value === "10" ? "10 joueurs et +" : `${opt.value} joueurs`);
+      const labelBase = opt.value === "1" ? "1 joueur" : (opt.value === "10" ? "10 joueurs et +" : `${opt.value} joueurs`);
       joueurOptionsData.push({ value: opt.value, label: labelBase, count: count });
     });
 
